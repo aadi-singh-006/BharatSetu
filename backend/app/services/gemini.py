@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from google import genai
@@ -25,10 +26,24 @@ class GeminiService:
 
         try:
             client = genai.Client(api_key=settings.gemini_api_key)
-            response = await client.aio.models.generate_content(
-                model=settings.gemini_model,
-                contents=message,
+            response = await asyncio.wait_for(
+                client.aio.models.generate_content(
+                    model=settings.gemini_model,
+                    contents=(
+                        "You are BharatSetu AI, a concise guide to Indian public services. "
+                        "Use clear markdown, state uncertainty, and recommend official sources. "
+                        "Never invent eligibility rules or application links.\n\n"
+                        f"User question: {message}"
+                    ),
+                ),
+                timeout=20,
             )
+        except asyncio.TimeoutError as exc:
+            logger.warning("Gemini request timed out")
+            raise GeminiServiceError(
+                message="The AI service took too long to respond. Please try again.",
+                code="gemini_timeout",
+            ) from exc
         except Exception as exc:
             logger.exception("Gemini request failed")
             raise GeminiServiceError(
@@ -36,7 +51,7 @@ class GeminiService:
                 code="gemini_request_failed",
             ) from exc
 
-        reply = response.text
+        reply = response.text.strip() if response.text else ""
         if not reply:
             raise GeminiServiceError(
                 message="The AI service returned an empty response. Please try again.",

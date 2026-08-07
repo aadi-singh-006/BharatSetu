@@ -34,12 +34,13 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     if entry:
         return ChatResponse(
             reply=(
-                f"{entry['title']}\n\n{entry['description']}\n\n"
-                f"Eligibility: {entry['eligibility']}\n\n"
-                f"Required documents: {', '.join(entry['required_documents'])}\n\n"
-                f"Application steps:\n" + "\n".join(
+                f"## {entry['title']}\n\n{entry['description']}\n\n"
+                f"### Eligibility\n{entry['eligibility']}\n\n"
+                "### Required documents\n" + "\n".join(
+                    f"- {document}" for document in entry["required_documents"]
+                ) + "\n\n### Application steps\n" + "\n".join(
                     f"{index}. {step}" for index, step in enumerate(entry["application_steps"], 1)
-                ) + f"\n\nOfficial website: {entry['official_website']}"
+                ) + f"\n\n**Official source:** [Open the official website]({entry['official_website']})"
             ),
             model="knowledge_base",
         )
