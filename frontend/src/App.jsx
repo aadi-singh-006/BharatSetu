@@ -2,6 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Bot, BrainCircuit, Building2, ChevronDown, ChevronRight, Code2, FileText, GraduationCap, HeartPulse, Landmark, Languages, Menu, MessageCircle, Mic, Moon, Send, Server, ShieldCheck, Sparkles, Sun, UserRound, Volume2, VolumeX, X } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const THEME_STORAGE_KEY = 'bharatsetu-theme'
+
+function readDarkMode() {
+  try { return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' }
+  catch { return false }
+}
+
+function applyDarkMode(enabled) {
+  document.documentElement.classList.toggle('dark', enabled)
+  document.documentElement.style.colorScheme = enabled ? 'dark' : 'light'
+  try { window.localStorage.setItem(THEME_STORAGE_KEY, enabled ? 'dark' : 'light') }
+  catch { /* Theme switching still works when storage is unavailable. */ }
+}
+
 const categories = [
   { title: 'Identity & Documents', copy: 'Aadhaar, PAN, passports and more', icon: FileText, color: 'blue' },
   { title: 'Government Schemes', copy: 'Benefits and public services', icon: Landmark, color: 'violet' },
@@ -57,10 +71,10 @@ function Brand({ onHome }) {
   return <button onClick={onHome} className="flex items-center gap-2.5 text-base font-bold text-slate-950 dark:text-white"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20"><Languages size={19} /></span>BharatSetu <span className="text-blue-600">AI</span></button>
 }
 
-function Navbar({ onChat, onHome, darkMode, setDarkMode, language, setLanguage }) {
+function Navbar({ onChat, onHome, darkMode, onToggleTheme, language, setLanguage }) {
   const [open, setOpen] = useState(false)
   const navigateHome = (hash) => { setOpen(false); onHome(hash) }
-  return <nav aria-label="Primary navigation" className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85"><div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-8"><Brand onHome={() => navigateHome('top')} /><div className="hidden items-center gap-8 text-sm font-medium text-slate-500 md:flex"><button className="text-blue-600" onClick={() => navigateHome('top')}>Home</button><button className="hover:text-slate-900 dark:hover:text-white" onClick={() => navigateHome('categories')}>Explore services</button><button className="hover:text-slate-900 dark:hover:text-white" onClick={() => navigateHome('about')}>About us</button></div><div className="flex items-center gap-1 sm:gap-2"><button title="Switch language" onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')} className="rounded-lg px-2 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-2.5">{language === 'en' ? 'हिन्दी' : 'English'}</button><button title={darkMode ? 'Use light mode' : 'Use dark mode'} aria-label="Toggle dark mode" onClick={() => setDarkMode(!darkMode)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button><button onClick={onChat} className="hidden items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 sm:flex">Ask BharatSetu <ArrowRight size={16} /></button><button aria-label="Toggle menu" aria-expanded={open} onClick={() => setOpen(!open)} className="rounded-lg p-2 text-slate-600 dark:text-slate-300 md:hidden">{open ? <X size={22} /> : <Menu size={22} />}</button></div></div>{open && <div className="border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 md:hidden"><div className="flex flex-col gap-4 text-sm font-medium text-slate-600 dark:text-slate-300"><button className="text-left" onClick={() => navigateHome('top')}>Home</button><button className="text-left" onClick={() => navigateHome('categories')}>Explore services</button><button className="text-left" onClick={() => navigateHome('about')}>About us</button><button onClick={() => { setOpen(false); onChat() }} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white">Ask BharatSetu <ArrowRight size={16} /></button></div></div>}</nav>
+  return <nav aria-label="Primary navigation" className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85"><div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-8"><Brand onHome={() => navigateHome('top')} /><div className="hidden items-center gap-8 text-sm font-medium text-slate-500 md:flex"><button className="text-blue-600" onClick={() => navigateHome('top')}>Home</button><button className="hover:text-slate-900 dark:hover:text-white" onClick={() => navigateHome('categories')}>Explore services</button><button className="hover:text-slate-900 dark:hover:text-white" onClick={() => navigateHome('about')}>About us</button></div><div className="flex items-center gap-1 sm:gap-2"><button title="Switch language" onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')} className="rounded-lg px-2 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-2.5">{language === 'en' ? 'हिन्दी' : 'English'}</button><button type="button" title={darkMode ? 'Use light mode' : 'Use dark mode'} aria-label="Toggle dark mode" aria-pressed={darkMode} onClick={onToggleTheme} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button><button onClick={onChat} className="hidden items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 sm:flex">Ask BharatSetu <ArrowRight size={16} /></button><button aria-label="Toggle menu" aria-expanded={open} onClick={() => setOpen(!open)} className="rounded-lg p-2 text-slate-600 dark:text-slate-300 md:hidden">{open ? <X size={22} /> : <Menu size={22} />}</button></div></div>{open && <div className="border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 md:hidden"><div className="flex flex-col gap-4 text-sm font-medium text-slate-600 dark:text-slate-300"><button className="text-left" onClick={() => navigateHome('top')}>Home</button><button className="text-left" onClick={() => navigateHome('categories')}>Explore services</button><button className="text-left" onClick={() => navigateHome('about')}>About us</button><button onClick={() => { setOpen(false); onChat() }} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white">Ask BharatSetu <ArrowRight size={16} /></button></div></div>}</nav>
 }
 
 function StartupSections({ onChat }) {
@@ -140,15 +154,16 @@ function EnhancedChatPage({ initialMessage, language }) {
 function App() {
   const [page, setPage] = useState(() => window.location.pathname === '/chat' ? 'chat' : 'home')
   const [initialMessage, setInitialMessage] = useState('')
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('bharatsetu-theme') === 'dark')
+  const [darkMode, setDarkMode] = useState(readDarkMode)
   const [language, setLanguage] = useState(() => localStorage.getItem('bharatsetu-language') || 'en')
-  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); localStorage.setItem('bharatsetu-theme', darkMode ? 'dark' : 'light') }, [darkMode])
+  useEffect(() => { applyDarkMode(darkMode) }, [darkMode])
   useEffect(() => { localStorage.setItem('bharatsetu-language', language) }, [language])
   useEffect(() => { const handlePopState = () => setPage(window.location.pathname === '/chat' ? 'chat' : 'home'); window.addEventListener('popstate', handlePopState); return () => window.removeEventListener('popstate', handlePopState) }, [])
+  const toggleTheme = () => setDarkMode((currentMode) => { const nextMode = !currentMode; applyDarkMode(nextMode); return nextMode })
   const openChat = (message = '') => { setInitialMessage(message); setPage('chat'); if (window.location.pathname !== '/chat') window.history.pushState({}, '', '/chat'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const openHome = (section = 'top') => { if (window.location.pathname !== '/') window.history.pushState({}, '', '/'); setPage('home'); window.setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' }), 0) }
   const isNotFound = window.location.pathname !== '/' && window.location.pathname !== '/chat'
-  return <main className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100"><Navbar onChat={() => openChat()} onHome={openHome} darkMode={darkMode} setDarkMode={setDarkMode} language={language} setLanguage={setLanguage} />{isNotFound ? <NotFound onHome={() => openHome()} /> : page === 'home' ? <HomePage onChat={openChat} onSuggestion={openChat} /> : <EnhancedChatPage initialMessage={initialMessage} language={language} />}</main>
+  return <main className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100"><Navbar onChat={() => openChat()} onHome={openHome} darkMode={darkMode} onToggleTheme={toggleTheme} language={language} setLanguage={setLanguage} />{isNotFound ? <NotFound onHome={() => openHome()} /> : page === 'home' ? <HomePage onChat={openChat} onSuggestion={openChat} /> : <EnhancedChatPage initialMessage={initialMessage} language={language} />}</main>
 }
 
 export default App
