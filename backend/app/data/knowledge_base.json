@@ -1,0 +1,65 @@
+[
+  {
+    "title": "Aadhaar",
+    "description": "Aadhaar is a 12-digit identity number issued by the Unique Identification Authority of India (UIDAI).",
+    "eligibility": "Any resident of India, including children and newborns, can enrol for Aadhaar.",
+    "required_documents": ["Proof of identity", "Proof of address", "Date of birth proof, where available"],
+    "application_steps": ["Locate an authorised Aadhaar Enrolment Centre on the UIDAI website.", "Submit the enrolment form and identity and address documents.", "Complete biometric capture and receive the enrolment acknowledgement.", "Download or receive Aadhaar after UIDAI verification."],
+    "official_website": "https://uidai.gov.in",
+    "keywords": ["aadhaar", "aadhar", "uidai", "unique identity", "enrolment"]
+  },
+  {
+    "title": "PAN Card",
+    "description": "A Permanent Account Number (PAN) is a ten-character alphanumeric identifier issued by the Income Tax Department.",
+    "eligibility": "Indian citizens, companies, firms, trusts, and other entities that need a tax identifier can apply.",
+    "required_documents": ["Proof of identity", "Proof of address", "Proof of date of birth for individuals", "Recent photograph for an individual application"],
+    "application_steps": ["Open the PAN application on the official portal.", "Complete Form 49A for Indian applicants or Form 49AA for foreign applicants.", "Upload or submit the required documents and photograph.", "Pay the application fee and track the acknowledgement."],
+    "official_website": "https://www.incometax.gov.in",
+    "keywords": ["pan", "pan card", "permanent account number", "income tax", "tax id"]
+  },
+  {
+    "title": "Passport",
+    "description": "An Indian passport is an official travel document issued by the Ministry of External Affairs.",
+    "eligibility": "Any Indian citizen can apply for a passport, subject to verification and applicable rules.",
+    "required_documents": ["Proof of present address", "Proof of date of birth", "Existing passport for reissue applications", "Additional documents where applicable"],
+    "application_steps": ["Register on the Passport Seva portal.", "Complete the fresh or reissue passport application.", "Pay the fee and schedule an appointment at a Passport Seva Kendra.", "Attend the appointment with original documents for verification.", "Track delivery after police verification, where required."],
+    "official_website": "https://www.passportindia.gov.in",
+    "keywords": ["passport", "passport seva", "travel document", "visa"]
+  },
+  {
+    "title": "Ayushman Bharat",
+    "description": "Ayushman Bharat PM-JAY provides eligible families access to cashless hospitalisation coverage at empanelled hospitals.",
+    "eligibility": "Eligibility is based on the government beneficiary database and scheme rules; citizens can check their status through the official portal.",
+    "required_documents": ["Aadhaar or another accepted identity document", "Mobile number", "Ration card or family identification details, where applicable"],
+    "application_steps": ["Check beneficiary eligibility on the official PM-JAY portal or through an authorised help desk.", "Complete beneficiary verification with the required identity documents.", "Receive or download the Ayushman card if eligible.", "Use the card at an empanelled hospital for covered treatment."],
+    "official_website": "https://pmjay.gov.in",
+    "keywords": ["ayushman bharat", "pm jay", "pm-jay", "health card", "government health scheme", "ayushman card"]
+  },
+  {
+    "title": "PM Kisan",
+    "description": "PM-KISAN is a central government income support scheme for eligible landholding farmer families.",
+    "eligibility": "Eligible landholding farmer families are covered subject to the scheme exclusions and verification requirements.",
+    "required_documents": ["Aadhaar number", "Bank account details", "Mobile number", "Land ownership or land record details"],
+    "application_steps": ["Visit the official PM-KISAN portal and choose New Farmer Registration.", "Enter Aadhaar and required personal and land details.", "Submit the registration for verification by the relevant authorities.", "Check application status and e-KYC status on the portal."],
+    "official_website": "https://pmkisan.gov.in",
+    "keywords": ["pm kisan", "pm-kisan", "kisan", "farmer scheme", "farmer payment"]
+  },
+  {
+    "title": "Driving License",
+    "description": "A driving licence authorises a person to drive specified classes of motor vehicles in India.",
+    "eligibility": "Applicants must meet the minimum age and other requirements for the relevant vehicle class.",
+    "required_documents": ["Proof of age", "Proof of address", "Passport-size photographs", "Medical certificate where applicable"],
+    "application_steps": ["Apply for a learner licence through the Parivahan portal or local RTO.", "Pass the learner licence test and practise for the required period.", "Apply for the permanent licence and book a driving test.", "Pass the driving test and complete the fee and document formalities."],
+    "official_website": "https://parivahan.gov.in",
+    "keywords": ["driving license", "driving licence", "dl", "learner licence", "rto", "parivahan"]
+  },
+  {
+    "title": "Scholarship",
+    "description": "The National Scholarship Portal brings together scholarship applications and payments for eligible students.",
+    "eligibility": "Eligibility varies by scholarship and may depend on category, income, academic performance, course, and domicile.",
+    "required_documents": ["Aadhaar or other identity document", "Income certificate", "Caste or category certificate where applicable", "Previous examination marksheet", "Bank account details", "Bonafide or admission certificate"],
+    "application_steps": ["Create or update a student profile on the National Scholarship Portal.", "Review scholarships matching your course and eligibility.", "Complete the application and upload supporting documents.", "Submit before the deadline and track institute and department verification."],
+    "official_website": "https://scholarships.gov.in",
+    "keywords": ["scholarship", "student scholarship", "national scholarship portal", "nsp", "education grant", "student aid"]
+  }
+]

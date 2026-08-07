@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+  button { cursor: pointer; }
+}
+
+@layer components {
+  .hero-grid { background-image: linear-gradient(#e8eef8 1px, transparent 1px), linear-gradient(90deg, #e8eef8 1px, transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to right, black, transparent 72%); }
+  .icon-blue { background: #eff6ff; color: #2563eb; }
+  .icon-violet { background: #f5f3ff; color: #7c3aed; }
+  .icon-rose { background: #fff1f2; color: #e11d48; }
+  .icon-amber { background: #fffbeb; color: #d97706; }
+}
