@@ -93,15 +93,29 @@ function EnhancedChatPage({ initialMessage, language }) {
   const [listening, setListening] = useState(false)
   const [speakingIndex, setSpeakingIndex] = useState(null)
   const [speechError, setSpeechError] = useState('')
-  const speaking = speakingIndex !== null
-  const setSpeaking = (value) => setSpeakingIndex(value ? 0 : null)
   const bottomRef = useRef(null)
   const recognitionRef = useRef(null)
-  const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
+  const speechUtteranceRef = useRef(null)
+  const speechVoicesRef = useRef([])
+  const canSpeak = typeof window !== 'undefined'
+    && 'speechSynthesis' in window
+    && typeof window.SpeechSynthesisUtterance === 'function'
   const canListen = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, loading])
-  useEffect(() => () => { recognitionRef.current?.stop(); window.speechSynthesis?.cancel() }, [])
+  useEffect(() => {
+    if (!canSpeak) return undefined
+    const synthesis = window.speechSynthesis
+    const updateVoices = () => { speechVoicesRef.current = synthesis.getVoices() }
+    updateVoices()
+    synthesis.addEventListener?.('voiceschanged', updateVoices)
+    return () => synthesis.removeEventListener?.('voiceschanged', updateVoices)
+  }, [canSpeak])
+  useEffect(() => () => {
+    recognitionRef.current?.stop()
+    speechUtteranceRef.current = null
+    window.speechSynthesis?.cancel()
+  }, [])
 
   const toggleListening = () => {
     if (!canListen) { setSpeechError(language === 'hi' ? 'इस ब्राउज़र में आवाज़ इनपुट उपलब्ध नहीं है।' : 'Voice input is not supported in this browser.'); return }
@@ -118,15 +132,64 @@ function EnhancedChatPage({ initialMessage, language }) {
     try { recognition.start() } catch { setListening(false); setSpeechError('Voice input could not start. Please try again.') }
   }
 
+  const stopSpeaking = () => {
+    speechUtteranceRef.current = null
+    if (canSpeak) window.speechSynthesis.cancel()
+    setSpeakingIndex(null)
+  }
+
   const speak = (text, index) => {
     if (!canSpeak) { setSpeechError('Voice output is not supported in this browser.'); return }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[*#`]/g, ''))
-    utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN'
-    utterance.onend = () => setSpeakingIndex(null)
-    utterance.onerror = () => { setSpeakingIndex(null); setSpeechError('Voice output could not be played.') }
-    setSpeakingIndex(index)
-    window.speechSynthesis.speak(utterance)
+    const synthesis = window.speechSynthesis
+    speechUtteranceRef.current = null
+    synthesis.cancel()
+    setSpeakingIndex(null)
+    setSpeechError('')
+
+    // Strip Markdown formatting while preserving the response's spoken wording.
+    const spokenText = text
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, '$1')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/^\s*\d+[.)]\s+/gm, '')
+      .replace(/[*_`~]/g, '')
+      .trim()
+    if (!spokenText) { setSpeechError('There is no text available to read aloud.'); return }
+
+    try {
+      const utterance = new window.SpeechSynthesisUtterance(spokenText)
+      const locale = /[\u0900-\u097F]/.test(text) || language === 'hi' ? 'hi-IN' : 'en-IN'
+      const languagePrefix = locale.slice(0, 2).toLowerCase()
+      const voices = speechVoicesRef.current.length ? speechVoicesRef.current : synthesis.getVoices()
+      utterance.lang = locale
+      utterance.voice = voices.find((voice) => voice.lang.toLowerCase().replace('_', '-') === locale.toLowerCase())
+        || voices.find((voice) => voice.lang.toLowerCase().replace('_', '-').startsWith(`${languagePrefix}-`))
+        || null
+      utterance.onstart = () => {
+        if (speechUtteranceRef.current === utterance) setSpeakingIndex(index)
+      }
+      utterance.onend = () => {
+        if (speechUtteranceRef.current === utterance) {
+          speechUtteranceRef.current = null
+          setSpeakingIndex(null)
+        }
+      }
+      utterance.onerror = (event) => {
+        if (speechUtteranceRef.current !== utterance) return
+        speechUtteranceRef.current = null
+        setSpeakingIndex(null)
+        if (event.error !== 'canceled' && event.error !== 'interrupted') {
+          setSpeechError('Voice output could not be played.')
+        }
+      }
+      speechUtteranceRef.current = utterance
+      setSpeakingIndex(index)
+      synthesis.speak(utterance)
+    } catch {
+      speechUtteranceRef.current = null
+      setSpeakingIndex(null)
+      setSpeechError('Voice output could not be played.')
+    }
   }
 
   const sendMessage = async (event, suggestedMessage) => {
@@ -136,7 +199,7 @@ function EnhancedChatPage({ initialMessage, language }) {
     setInput(''); setSpeechError(''); setMessages((items) => [...items, { role: 'user', text: message }]); setLoading(true)
     try {
       const controller = new AbortController()
-      const timeout = window.setTimeout(() => controller.abort(), 25000)
+      const timeout = window.setTimeout(() => controller.abort(), 70000)
       let response
       try { response = await fetch(`${API_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }), signal: controller.signal }) }
       finally { window.clearTimeout(timeout) }
@@ -148,7 +211,7 @@ function EnhancedChatPage({ initialMessage, language }) {
     finally { setLoading(false) }
   }
 
-  return <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-7xl bg-white dark:bg-slate-950"><aside className="hidden w-64 shrink-0 border-r border-slate-200 px-5 py-7 dark:border-slate-800 lg:block"><div className="mb-8 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"><MessageCircle className="text-blue-600" size={18} /> {language === 'hi' ? 'नई बातचीत' : 'New conversation'}</div><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">{language === 'hi' ? 'श्रेणियां' : 'Categories'}</p><div className="space-y-1">{categories.map(({ title, icon: Icon }) => <button key={title} onClick={() => setInput(`Tell me about ${title}`)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-slate-800"><Icon size={16} /> {title}</button>)}</div></aside><section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-10 sm:py-8"><div className="mx-auto flex w-full max-w-3xl flex-1 flex-col"><div className="mb-6 sm:mb-8"><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-blue-600"><ShieldCheck size={14} /> BharatSetu AI</div><h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">{language === 'hi' ? 'आज मैं आपकी कैसे मदद कर सकता हूं?' : 'How can I help you today?'}</h1><p className="mt-2 text-sm text-slate-500">{language === 'hi' ? 'जानकारी सभी के लिए आसान।' : 'Information made simple, for everyone.'}</p></div><div className="flex-1 space-y-5">{messages.length === 0 && <EmptyState language={language} onPrompt={(prompt) => sendMessage(null, prompt)} />}{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`animate-rise flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>{message.role === 'assistant' && <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Bot size={16} /></span>}<div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[85%] ${message.role === 'user' ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>{message.role === 'assistant' ? <><MarkdownText text={message.text} /><button title={speaking ? 'Stop speaking' : 'Read aloud'} onClick={() => speaking ? (window.speechSynthesis.cancel(), setSpeaking(false)) : speak(message.text)} className="mt-2 rounded-lg p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600">{speaking ? <VolumeX size={15} /> : <Volume2 size={15} />}</button></> : message.text}</div></div>)}{loading && <div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-50 text-blue-600"><Bot size={16} /></span><div className="space-y-2"><div className="skeleton-line w-40" /><div className="skeleton-line w-24" /></div></div>}<div ref={bottomRef} /></div><form onSubmit={sendMessage} className="sticky bottom-2 mt-8 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/10 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50 dark:border-slate-700 dark:bg-slate-900"><button type="button" title={listening ? 'Stop listening' : 'Voice input'} aria-label="Voice input" onClick={toggleListening} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${listening ? 'bg-rose-100 text-rose-600' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}><Mic size={17} /></button><input value={input} onChange={(event) => setInput(event.target.value)} placeholder={language === 'hi' ? 'सरकारी सेवा के बारे में पूछें...' : 'Ask about a government service...'} className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-slate-400 dark:text-white" /><button aria-label="Send message" disabled={loading} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"><Send size={17} /></button></form>{speechError && <p role="status" className="mt-2 text-center text-xs text-rose-600">{speechError}</p>}<p className="mt-3 text-center text-[11px] text-slate-400">{language === 'hi' ? 'AI की जानकारी में गलतियां हो सकती हैं।' : 'BharatSetu AI can make mistakes. Always verify details on official websites.'}</p></div></section></div>
+  return <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-7xl bg-white dark:bg-slate-950"><aside className="hidden w-64 shrink-0 border-r border-slate-200 px-5 py-7 dark:border-slate-800 lg:block"><div className="mb-8 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white"><MessageCircle className="text-blue-600" size={18} /> {language === 'hi' ? 'नई बातचीत' : 'New conversation'}</div><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-slate-400">{language === 'hi' ? 'श्रेणियां' : 'Categories'}</p><div className="space-y-1">{categories.map(({ title, icon: Icon }) => <button key={title} onClick={() => setInput(`Tell me about ${title}`)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-slate-800"><Icon size={16} /> {title}</button>)}</div></aside><section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-10 sm:py-8"><div className="mx-auto flex w-full max-w-3xl flex-1 flex-col"><div className="mb-6 sm:mb-8"><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-blue-600"><ShieldCheck size={14} /> BharatSetu AI</div><h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">{language === 'hi' ? 'आज मैं आपकी कैसे मदद कर सकता हूं?' : 'How can I help you today?'}</h1><p className="mt-2 text-sm text-slate-500">{language === 'hi' ? 'जानकारी सभी के लिए आसान।' : 'Information made simple, for everyone.'}</p></div><div className="flex-1 space-y-5">{messages.length === 0 && <EmptyState language={language} onPrompt={(prompt) => sendMessage(null, prompt)} />}{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`animate-rise flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>{message.role === 'assistant' && <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Bot size={16} /></span>}<div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[85%] ${message.role === 'user' ? 'rounded-tr-sm bg-blue-600 text-white' : 'rounded-tl-sm border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>{message.role === 'assistant' ? <><MarkdownText text={message.text} /><button type="button" title={speakingIndex === index ? 'Stop speaking' : 'Read aloud'} aria-label={speakingIndex === index ? 'Stop reading response aloud' : 'Read response aloud'} aria-pressed={speakingIndex === index} onClick={() => speakingIndex === index ? stopSpeaking() : speak(message.text, index)} className="mt-2 rounded-lg p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600">{speakingIndex === index ? <VolumeX size={15} /> : <Volume2 size={15} />}</button></> : message.text}</div></div>)}{loading && <div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-50 text-blue-600"><Bot size={16} /></span><div className="space-y-2"><div className="skeleton-line w-40" /><div className="skeleton-line w-24" /></div></div>}<div ref={bottomRef} /></div><form onSubmit={sendMessage} className="sticky bottom-2 mt-8 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/10 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50 dark:border-slate-700 dark:bg-slate-900"><button type="button" title={listening ? 'Stop listening' : 'Voice input'} aria-label="Voice input" onClick={toggleListening} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${listening ? 'bg-rose-100 text-rose-600' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}><Mic size={17} /></button><input value={input} onChange={(event) => setInput(event.target.value)} placeholder={language === 'hi' ? 'सरकारी सेवा के बारे में पूछें...' : 'Ask about a government service...'} className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-slate-400 dark:text-white" /><button aria-label="Send message" disabled={loading} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"><Send size={17} /></button></form>{speechError && <p role="status" className="mt-2 text-center text-xs text-rose-600">{speechError}</p>}<p className="mt-3 text-center text-[11px] text-slate-400">{language === 'hi' ? 'AI की जानकारी में गलतियां हो सकती हैं।' : 'BharatSetu AI can make mistakes. Always verify details on official websites.'}</p></div></section></div>
 }
 
 function App() {
