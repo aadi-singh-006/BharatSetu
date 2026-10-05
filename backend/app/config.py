@@ -11,7 +11,10 @@ class Settings:
     app_name: str = os.getenv("APP_NAME", "BharatSetu AI API")
     app_env: str = os.getenv("APP_ENV", "development")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
+    gemini_timeout_seconds: float = max(
+        1.0, float(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
+    )
     cors_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:5173").split(",")

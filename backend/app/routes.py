@@ -25,9 +25,11 @@ async def health_check() -> dict[str, str]:
     "/chat",
     response_model=ChatResponse,
     responses={
+        404: {"model": ErrorResponse, "description": "No configured Gemini model is available"},
         429: {"model": ErrorResponse, "description": "Gemini request quota or rate limit reached"},
         502: {"model": ErrorResponse, "description": "Gemini returned an invalid response"},
         503: {"model": ErrorResponse, "description": "Gemini is unavailable or not configured"},
+        504: {"model": ErrorResponse, "description": "Gemini did not respond before the request deadline"},
     },
 )
 async def chat(payload: ChatRequest) -> ChatResponse:
