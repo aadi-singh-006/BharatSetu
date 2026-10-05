@@ -19,7 +19,8 @@ class GeminiServiceTests(unittest.IsolatedAsyncioTestCase):
         self.generate_content = AsyncMock()
         self.client = SimpleNamespace(
             aio=SimpleNamespace(
-                models=SimpleNamespace(generate_content=self.generate_content)
+                models=SimpleNamespace(generate_content=self.generate_content),
+                aclose=AsyncMock(),
             )
         )
         self.settings = SimpleNamespace(
@@ -49,7 +50,7 @@ class GeminiServiceTests(unittest.IsolatedAsyncioTestCase):
         for model in ("configured-model", "gemini-2.5-flash-lite", "gemini-2.5-pro"):
             self.assertTrue(any(f"model={model}" in entry for entry in logs.output))
 
-    async def test_non_404_api_error_logs_details_without_retry(self) -> None:
+    async def test_quota_api_error_logs_details_without_retry(self) -> None:
         self.generate_content.side_effect = api_error(429, "quota exceeded")
 
         with (
@@ -60,12 +61,26 @@ class GeminiServiceTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(GeminiServiceError) as raised:
                 await GeminiService().generate_reply("Hello")
 
-        self.assertEqual(raised.exception.code, "gemini_request_failed")
+        self.assertEqual(raised.exception.code, "gemini_rate_limited")
         self.assertEqual(self.generate_content.await_count, 1)
         self.assertTrue(any(
             "status_code=429" in entry and "message=quota exceeded" in entry
             for entry in logs.output
         ))
+
+    async def test_quota_error_returns_rate_limit_and_closes_client(self) -> None:
+        self.generate_content.side_effect = api_error(429, "quota exceeded")
+
+        with (
+            patch("app.services.gemini.settings", self.settings),
+            patch("app.services.gemini.genai.Client", return_value=self.client),
+        ):
+            with self.assertRaises(GeminiServiceError) as raised:
+                await GeminiService().generate_reply("Hello")
+
+        self.assertEqual(raised.exception.code, "gemini_rate_limited")
+        self.assertEqual(raised.exception.status_code, 429)
+        self.client.aio.aclose.assert_awaited_once()
 
     async def test_all_404s_return_model_unavailable(self) -> None:
         self.generate_content.side_effect = [
@@ -95,6 +110,7 @@ class GeminiServiceTests(unittest.IsolatedAsyncioTestCase):
             reply = await GeminiService().generate_reply("Hello")
 
         self.assertEqual(reply, "Configured reply")
+        self.client.aio.aclose.assert_awaited_once()
         self.assertEqual(self.generate_content.await_count, 1)
         self.assertEqual(
             self.generate_content.await_args.kwargs["model"],

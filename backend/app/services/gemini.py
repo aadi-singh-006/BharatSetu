@@ -43,66 +43,78 @@ class GeminiService:
                 code="gemini_request_failed",
             ) from exc
 
-        contents = (
-            "You are BharatSetu AI, a concise guide to Indian public services. "
-            "Use clear markdown, state uncertainty, and recommend official sources. "
-            "Never invent eligibility rules or application links.\n\n"
-            f"User question: {message}"
-        )
-        last_error: errors.APIError | None = None
-        for model in self._model_candidates():
-            logger.info("Sending Gemini request with model=%s", model)
-            try:
-                response = await asyncio.wait_for(
-                    client.aio.models.generate_content(
-                        model=model,
-                        contents=contents,
-                    ),
-                    timeout=20,
-                )
-                break
-            except asyncio.TimeoutError as exc:
-                logger.warning("Gemini request timed out with model=%s", model)
-                raise GeminiServiceError(
-                    message="The AI service took too long to respond. Please try again.",
-                    code="gemini_timeout",
-                ) from exc
-            except errors.APIError as exc:
-                last_error = exc
-                logger.error(
-                    "Google GenAI API request failed: model=%s status_code=%s message=%s",
-                    model,
-                    exc.code,
-                    exc.message or str(exc),
-                )
-                if exc.code == 404:
-                    continue
-                raise GeminiServiceError(
-                    message="The AI service is temporarily unavailable. Please try again.",
-                    code="gemini_request_failed",
-                ) from exc
-            except Exception as exc:
-                logger.exception("Gemini request failed with model=%s", model)
-                raise GeminiServiceError(
-                    message="The AI service is temporarily unavailable. Please try again.",
-                    code="gemini_request_failed",
-                ) from exc
-        else:
-            logger.error("No configured Gemini model was available: %s", last_error)
-            raise GeminiServiceError(
-                message="No supported Gemini model is available for this API key.",
-                code="gemini_model_unavailable",
-            ) from last_error
-
-        reply = response.text.strip() if response.text else ""
-        if not reply:
-            raise GeminiServiceError(
-                message="The AI service returned an empty response. Please try again.",
-                code="gemini_empty_response",
-                status_code=502,
+        try:
+            contents = (
+                "You are BharatSetu AI, a concise guide to Indian public services. "
+                "Use clear markdown, state uncertainty, and recommend official sources. "
+                "Never invent eligibility rules or application links.\n\n"
+                f"User question: {message}"
             )
+            last_error: errors.APIError | None = None
+            for model in self._model_candidates():
+                logger.info("Sending Gemini request with model=%s", model)
+                try:
+                    response = await asyncio.wait_for(
+                        client.aio.models.generate_content(
+                            model=model,
+                            contents=contents,
+                        ),
+                        timeout=20,
+                    )
+                    break
+                except asyncio.TimeoutError as exc:
+                    logger.warning("Gemini request timed out with model=%s", model)
+                    raise GeminiServiceError(
+                        message="The AI service took too long to respond. Please try again.",
+                        code="gemini_timeout",
+                    ) from exc
+                except errors.APIError as exc:
+                    last_error = exc
+                    logger.error(
+                        "Google GenAI API request failed: model=%s status_code=%s message=%s",
+                        model,
+                        exc.code,
+                        exc.message or str(exc),
+                    )
+                    if exc.code == 404:
+                        continue
+                    if exc.code == 429:
+                        raise GeminiServiceError(
+                            message="The AI service is receiving too many requests or has reached its usage limit. Please wait a little and try again.",
+                            code="gemini_rate_limited",
+                            status_code=429,
+                        ) from exc
+                    raise GeminiServiceError(
+                        message="The AI service is temporarily unavailable. Please try again.",
+                        code="gemini_request_failed",
+                    ) from exc
+                except Exception as exc:
+                    logger.exception("Gemini request failed with model=%s", model)
+                    raise GeminiServiceError(
+                        message="The AI service is temporarily unavailable. Please try again.",
+                        code="gemini_request_failed",
+                    ) from exc
+            else:
+                logger.error("No configured Gemini model was available: %s", last_error)
+                raise GeminiServiceError(
+                    message="No supported Gemini model is available for this API key.",
+                    code="gemini_model_unavailable",
+                ) from last_error
 
-        return reply
+            reply = response.text.strip() if response.text else ""
+            if not reply:
+                raise GeminiServiceError(
+                    message="The AI service returned an empty response. Please try again.",
+                    code="gemini_empty_response",
+                    status_code=502,
+                )
+
+            return reply
+        finally:
+            try:
+                await client.aio.aclose()
+            except Exception:
+                logger.exception("Failed to close Google GenAI async client")
 
 
 gemini_service = GeminiService()
